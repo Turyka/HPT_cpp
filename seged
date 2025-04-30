@@ -1,0 +1,48 @@
+hány nő: grep -r "nő" adatok.txt >nok.txt
+
+az első
+grep "nő" adatok.txt | cut -d' ' -f1
+
+
+feladat:
+#!/bin/bash
+# 1. feladat
+	Is -l /dev >eszkozok.txt
+# 2. feladat
+	echo 'Adja meg az első szamot' 
+	read a
+	echo 'Adja meg a második szamot' 
+	read b
+	if [ $a -gt $b ] 
+	then
+		let temp=$a*2 
+		let temp=$temp-$b
+	else
+		let temp=$b*2 
+		let temp=$temp-$a 
+		fi
+	echo 'Kulonbseg:'$temp
+# 3. feladat
+	echo 'Adjon meg egy 20-nal kisebb pozitiv szamot:' 
+	read c
+	while [ $c -gt 20 -o $c -lt 0 ] 
+	do
+		echo 'A megadott szám nem fele meg a paramétereknek! Adjon meg egy 20-nal kisebb pozitiv szamot: '
+		read c
+	done
+	if (( $c % 2 )) 
+	then
+		let c=c+l 
+	fi
+	while [ $c -lt 42 ] do
+		echo $c >>paros.txt 
+		let c=$c+2 
+	done
+# 4. feladat
+	Nem volt adatok fájl!
+	hány nő: grep -r "nő" adatok.txt >nok.txt
+	férfiak: grep -i "férfi" adatok.txt >ffi.txt
+
+
+
+
