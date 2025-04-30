@@ -51,6 +51,65 @@ tail -n 5 fajl.txt
 
 
 Ha csökkenő sorrendben akarod rendezni a fájl tartalmát, akkor csak tedd hozzá a -r kapcsolót:
+
+
+
+
+feladat 3:
+
+#!/bin/bash 
+# 1. feladat
+	Is /etc >lista.txt 
+# 2. feladat
+	echo Kerem adja meg az első szamot: 
+	read a
+	if [ $a -lt 0 ] 
+	then
+		av=0
+	else
+		av=l
+	fi
+	echo Kerem adja meg a masodik szamot: 
+	read b
+	if [ $b -lt 0 ] 
+	then
+		bv=0
+	else
+		bv=l
+	fi
+	c=$av$bv
+	case $c in 
+		00)
+			echo 'Mindket szam negativ :('
+		;;
+		01)
+			echo 'Elso szam negativ'
+		;;
+		10)
+			echo 'Masodik szam negativ'
+		;;
+		11)
+			echo 'Egyik szam se negativ :)'
+		;;
+	esac
+# 3. feladat
+	echo Kerem adjon meg egy -30-nal nagyobb negativ szamot: 
+	read e
+	while [ $e -le -30 -o $e -ge 0 ] 
+	do
+		echo A megadott szam nem megfelelo!
+		echo Kerem adjon meg egy -30-nal nagyobb negativ szamot 
+		read e
+	done
+	szam=0
+	while [ $e -ne 41 ] 
+	do
+		echo $e
+		let szam=$szam+$e
+		let e=$e+l
+	done
+	echo $szam > szamok.txt
+
 sort -r adatok.txt
 
 numerikus:
