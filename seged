@@ -43,6 +43,16 @@ feladat:
 	hány nő: grep -r "nő" adatok.txt >nok.txt
 	férfiak: grep -i "férfi" adatok.txt >ffi.txt
 
+Ez az első 5 sort fogja megjeleníteni a fájlból.
+head -n 5 fajl.txt
+
+Ez az utolsó 5 sort fogja megjeleníteni a fájlból.
+tail -n 5 fajl.txt
 
 
+Ha csökkenő sorrendben akarod rendezni a fájl tartalmát, akkor csak tedd hozzá a -r kapcsolót:
+sort -r adatok.txt
+
+numerikus:
+sort -n szamok.txt
 
