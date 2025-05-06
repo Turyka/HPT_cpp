@@ -1,0 +1,258 @@
+ 1. Lakásos rendszer (04-15 és 04-22 alapján)
+
+-- Tábla létrehozása
+DROP TABLE IF EXISTS lakas;
+CREATE TABLE lakas (
+	id INT PRIMARY KEY,
+	varos VARCHAR(50),
+	terulet INT,
+	erkely INT,
+	szoba INT,
+	ev INT,
+	ar INT
+);
+
+-- Minta adat
+INSERT INTO lakas VALUES (1, 'Pécs', 50, 10, 2, 2021, 11500000);
+
+-- Függvény: közös költség
+DELIMITER $$
+CREATE FUNCTION kozos_koltseg(terulet INT, erkely INT) RETURNS INT
+BEGIN
+	RETURN (terulet + erkely / 2) * 300;
+END $$
+DELIMITER ;
+
+-- Függvény: típus
+DELIMITER $$
+CREATE FUNCTION tipus(terulet INT) RETURNS VARCHAR(20)
+BEGIN
+	IF terulet < 45 THEN
+		RETURN 'kicsi';
+	ELSEIF terulet > 90 THEN
+		RETURN 'nagy';
+	ELSE
+		RETURN 'átlagos';
+	END IF;
+END $$
+DELIMITER ;
+
+-- Függvény: kerekítés millióra
+DELIMITER $$
+CREATE FUNCTION kerekit(ar INT) RETURNS INT
+BEGIN
+	DECLARE seged INT;
+	SET seged = ar MOD 1000000;
+	IF seged < 500000 THEN
+		RETURN ar - seged;
+	ELSE
+		RETURN ar - seged + 1000000;
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: ha frissítik az árat, logoljuk
+DROP TABLE IF EXISTS lakas_log;
+CREATE TABLE lakas_log (
+	id INT,
+	regi INT,
+	uj INT,
+	datum DATETIME
+);
+
+DELIMITER $$
+CREATE TRIGGER update_after_lakas
+AFTER UPDATE ON lakas
+FOR EACH ROW
+BEGIN
+	IF OLD.ar <> NEW.ar THEN
+		INSERT INTO lakas_log VALUES (NEW.id, OLD.ar, NEW.ar, NOW());
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: ha nincs ár, számoljuk ki
+DELIMITER $$
+CREATE TRIGGER insert_after_lakas
+BEFORE INSERT ON lakas
+FOR EACH ROW
+BEGIN
+	IF NEW.ar = 0 THEN
+		SET NEW.ar = NEW.terulet * 500000;
+	END IF;
+END $$
+DELIMITER ;
+
+🐶 2. Tulajdonos – kutya rendszer (04-22 alapján)
+
+-- Tulajdonos tábla
+DROP TABLE IF EXISTS tulajdonos;
+CREATE TABLE tulajdonos (
+	id INT PRIMARY KEY,
+	nev VARCHAR(30) NOT NULL,
+	varos VARCHAR(30) NOT NULL
+);
+
+-- Kutya tábla
+DROP TABLE IF EXISTS kutya;
+CREATE TABLE kutya (
+	id INT PRIMARY KEY,
+	nev VARCHAR(30) NOT NULL,
+	fajta VARCHAR(30) NOT NULL,
+	neme CHAR(1),
+	kor INT,
+	tulajdonos_id INT,
+	FOREIGN KEY (tulajdonos_id) REFERENCES tulajdonos(id)
+);
+
+-- Kutya log
+CREATE TABLE kutya_log (
+	id INT,
+	regi_tulajdonos INT,
+	uj_tulajdonos INT,
+	datum DATE
+);
+
+-- Trigger: ha neme nem 'K' vagy 'S', legyen 'K'
+DELIMITER $$
+CREATE TRIGGER nincs_neme
+BEFORE INSERT ON kutya
+FOR EACH ROW
+BEGIN
+	IF NEW.neme NOT IN ('K', 'S') THEN
+		SET NEW.neme = 'K';
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: tulajdonosváltás logolása
+DELIMITER $$
+CREATE TRIGGER tulaj_valtozas
+AFTER UPDATE ON kutya
+FOR EACH ROW
+BEGIN
+	IF OLD.tulajdonos_id <> NEW.tulajdonos_id THEN
+		INSERT INTO kutya_log VALUES (NEW.id, OLD.tulajdonos_id, NEW.tulajdonos_id, CURDATE());
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: város és név tisztítása
+DELIMITER $$
+CREATE TRIGGER varos_helyes
+BEFORE INSERT ON tulajdonos
+FOR EACH ROW
+BEGIN
+	SET NEW.nev = TRIM(UPPER(NEW.nev));
+	SET NEW.varos = TRIM(UPPER(NEW.varos));
+END $$
+DELIMITER ;
+
+🧑‍🏫 3. Tanár – szakkör rendszer (04-29 alapján)
+
+-- Táblák
+DROP TABLE IF EXISTS tanar;
+DROP TABLE IF EXISTS szakkor;
+DROP TABLE IF EXISTS tanar_log;
+
+CREATE TABLE tanar (
+	id INT PRIMARY KEY,
+	nev VARCHAR(30) NOT NULL,
+	tantargy VARCHAR(30) NOT NULL,
+	ev INT,
+	fizetes INT NOT NULL,
+	jutalom INT NOT NULL
+);
+
+CREATE TABLE szakkor (
+	id INT PRIMARY KEY,
+	tantargy VARCHAR(30) NOT NULL,
+	ora INT,
+	nap VARCHAR(30),
+	terem INT,
+	tanar_id INT,
+	FOREIGN KEY (tanar_id) REFERENCES tanar(id)
+);
+
+CREATE TABLE tanar_log (
+	regi_tanar_nev VARCHAR(30),
+	regi_tanar_id INT,
+	uj_tanar_id INT,
+	datum DATE
+);
+
+-- Függvény: éves jövedelem
+DELIMITER $$
+CREATE FUNCTION eves_jovedelem(fizetes INT, jutalom INT) RETURNS INT
+BEGIN
+	RETURN (fizetes * 12) + jutalom;
+END $$
+DELIMITER ;
+
+-- Függvény: jutalom kategória
+DELIMITER $$
+CREATE FUNCTION eves_jutalom(jutalom INT) RETURNS INT
+BEGIN
+	IF jutalom < 100000 THEN
+		RETURN 0;
+	ELSEIF jutalom < 200000 THEN
+		RETURN 1;
+	ELSEIF jutalom < 300000 THEN
+		RETURN 2;
+	ELSE
+		RETURN 3;
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: ha nincs év, legyen most + 10
+DELIMITER $$
+CREATE TRIGGER nincs_ev
+BEFORE INSERT ON tanar
+FOR EACH ROW
+BEGIN
+	IF NEW.ev IS NULL THEN
+		SET NEW.ev = YEAR(CURDATE()) + 10;
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: hétvégi nap helyett hétfő vagy kedd
+DELIMITER $$
+CREATE TRIGGER napok_baj
+BEFORE INSERT ON szakkor
+FOR EACH ROW
+BEGIN
+	IF NEW.nap IN ('szombat', 'vasárnap') THEN
+		SET NEW.nap = 'kedd';
+	ELSEIF NEW.nap NOT IN ('hétfő', 'kedd', 'szerda', 'csütörtök', 'péntek') THEN
+		SET NEW.nap = 'hétfő';
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: tantárgytól függő óraszám
+DELIMITER $$
+CREATE TRIGGER matek_fizika
+BEFORE INSERT ON szakkor
+FOR EACH ROW
+BEGIN
+	IF NEW.tantargy IN ('matek', 'fizika') THEN
+		SET NEW.ora = 3;
+	ELSE
+		SET NEW.ora = 2;
+	END IF;
+END $$
+DELIMITER ;
+
+-- Trigger: tanár ID változás naplózása
+DELIMITER $$
+CREATE TRIGGER tanar_valtozas
+AFTER UPDATE ON tanar
+FOR EACH ROW
+BEGIN
+	IF OLD.id <> NEW.id THEN
+		INSERT INTO tanar_log VALUES (OLD.nev, OLD.id, NEW.id, CURDATE());
+	END IF;
+END $$
+DELIMITER ;
