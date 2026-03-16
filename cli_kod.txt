@@ -1,0 +1,192 @@
+Jelszó titkosítás -> service password-encryption
+
+Jelszó min length -> security passwords min-length 8
+
+Brute force -> login block-for 120 attempts 3 within 60
+(Ha 60 másodpercen belül 3-szor sikertelen bejelentkezési kísérlet történik, akkor blokkolja a hozzáférést 120 másodpercre.)
+
+Tétlenségi idő -> exec-timeout 10 0 ( 10 perc és 0 másodper)
+
+5 fő jelszó:
+
+1.enable password:
+Belépés a privilegizált módbaá
+Titkosítatlanul tárolódik a konfigban
+
+2.enable secret:
+belépés a privilegizált módba
+MD5 titkosítással tárolódik
+Ha mindkettő be van állítva, az enable secret felülírja az enable password-öt
+
+3.line console 0 (password):
+A fizikai konzol porton való bejelentkezéshez kell
+
+4.line vty 0 15
+A távoli eléréshez kell (Telnet / SSH)
+Ha login local-t használsz, akkor a username/password páros lép életbe ehelyett
+
+5. username [név] secret [jelszó]
+Helyi felhasználói fiók jelszava
+SSH esetén kötelező, mert login local-lal működik
+
+
+username admin privilege 15 secret cisco123
+Helyi felhasználó 15 szinten
+
+Banner:
+banner motd #
+
+=== Telnet / SSH configok ===
+Már létrehozott user:
+line vty 0 15
+ login local
+ exec-timeout 10 0
+ transport input ssh telnet
+exit
+
+csak jelszó:
+line vty 0 15
+ password cisco123
+ login
+exit
+
+access-class 10 in
+Csak bizonyos IP-címekről lehet bejelentkezni
+
+logging synchronous
+A naplóüzenetek ne szakítsák meg a gépelést a terminálban
+
+=== BEJELENTKEZÉS NAPLÓZÁSA ===
+login on-success log
+login on-failure log
+
+show login
+show login failures
+
+=== SYSLOG (192.168.100.253) ===
+logging host 192.168.100.253
+logging trap informational
+logging on
+
+A szerverre küldi a naplózást
+
+
+
+=== DHCP ====
+
+ip dhcp excluded-address 192.168.3.1
+! Csak egy cím kizárva (a router maga)
+
+ip dhcp excluded-address 192.168.3.1 192.168.3.10
+! Tartomány kizárva (3.1-től 3.10-ig)
+
+ip dhcp excluded-address 192.168.3.1 192.168.3.10
+
+ip dhcp pool BOB-LAN
+ network 192.168.3.0 255.255.255.192
+ default-router 192.168.3.1
+ dns-server 192.168.100.254
+ domain-name alice.net
+ lease 1 ->bérelti idő 1 nap
+exit
+
+=== FTP MENTÉS SZERVER ===
+
+ip ftp username admin
+ip ftp password cisco123
+
+copy running-config ftp
+
+
+! === SSH BEÁLLÍTÁS ===
+hostname BOB
+crypto key generate rsa modulus 2048
+ip ssh version 2
+
+
+=== AAA MODEL ===
+1 lépés 
+username ADMIN secret Str0ngPa55w0rd
+aaa new-model
+aaa authentication login default local-case
+
+aaa authentication → belépési ellenőrzésről van szó
+login → amikor valaki be akar jelentkezni
+default → ez az alapszabály, minden interfészre érvényes
+local-case → a router saját felhasználói adatbázisát nézi meg (és a jelszó kis-nagybetű érzékeny)
+
+- aaa local authentication attempts max-fail 10 -> Ha valaki 10-szer egymás után rossz jelszót ad meg, a fiókja zárolódik
+
+- clear aaa local user lockout username ADMIN
+
+=== Tacacs+ ===
+
+tacacs-server host 192.168.1.101 single-connection
+tacacs-server key TitkosKulcs123
+aaa authentication login default group tacacs+ local-case
+
+
+=== CONFIG ===
+
+copy running-config startup-config    ← mentés (ezt használod leggyakrabban)
+copy startup-config running-config    ← elmentett config betöltése
+copy running-config tftp              ← config mentése szerverre (backup)
+copy tftp running-config              ← config visszatöltése szerverről
+copy startup-config null              ← elmentett config törlése (gyári alaphelyzet)
+
+
+=== Jelszó visszaállítás ===
+
+
+1. ctr + fn + b
+
+2. rommon 1> confreg 0x2142
+rommon 2> reset
+
+3. copy startup-config running-config
+
+4.username ADMIN secret UjJelszó123 vagy enable secret UjJelszó123
+
+5.
+Router(config)# config-register 0x2102
+Router(config)# end
+Router# copy running-config startup-config
+
+=== ACL ===
+
+R1(config)# access-list 10 permit 192.168.1.0 0.0.0.255
+R1(config)# access-list 10 deny   any
+
+R1(config)# interface GigabitEthernet0/1
+R1(config-if)# ip access-group 10 out
+
+R1(config)# access-list 110 permit tcp 192.168.1.0 0.0.0.255 any eq 80
+R1(config)# access-list 110 permit tcp 192.168.1.0 0.0.0.255 any eq 443
+R1(config)# access-list 110 deny   ip  any any
+
+R1(config)# interface GigabitEthernet0/0
+R1(config-if)# ip access-group 110 in
+
+
+===  Privilege szintek ===
+
+! 1-es szintű felhasználó
+R1(config)# username USER privilege 1 secret cisco
+
+! 5-ös szintű jogosultság: ping parancs elérése
+R1(config)# privilege exec level 5 ping
+R1(config)# enable secret level 5 cisco5
+R1(config)# username SUPPORT privilege 5 secret cisco5
+
+! 10-es szintű jogosultság: reload parancs elérése
+R1(config)# privilege exec level 10 reload
+R1(config)# enable secret level 10 cisco10
+R1(config)# username JR-ADMIN privilege 10 secret cisco10
+
+! 15-ös szintű (teljes jogosultság)
+R1(config)# username ADMIN privilege 15 secret cisco123
+
+R1> enable 5          ! Váltás 5-ös szintre
+R1# enable 10         ! Váltás 10-es szintre
+R1# enable 15         ! Váltás 15-ös szintre
+R1# show privilege    ! Aktuális szint megjelenítése
