@@ -190,3 +190,38 @@ R1> enable 5          ! Váltás 5-ös szintre
 R1# enable 10         ! Váltás 10-es szintre
 R1# enable 15         ! Váltás 15-ös szintre
 R1# show privilege    ! Aktuális szint megjelenítése
+
+
+=== TFTP ===
+letöltés:
+Router# copy tftp flash:
+Address or name of remote host []? 192.168.1.100
+Source filename []? c2900-universalk9-mz.SPA.156-1.T.bin
+Destination filename [c2900-universalk9-mz.SPA.156-1.T.bin]? 
+Loading c2900-universalk9-mz.SPA.156-1.T.bin from 192.168.1.100 (via GigabitEthernet0/0):
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[OK - 68831232 bytes]
+
+
+feltöltés:
+Router# copy flash: tftp:
+Source filename []? running-config
+Address or name of remote host []? 192.168.1.100
+Destination filename [running-config]? router-backup.cfg
+!!
+[OK - 3254 bytes]
+
+Running config mentése TFTP-re
+Router# copy running-config tftp:
+Address or name of remote host []? 192.168.1.100
+Destination filename [router-running-config]?
+Startup config mentése TFTP-re
+Router# copy startup-config tftp:
+Address or name of remote host []? 192.168.1.100
+Destination filename [router-startup-config]?
+
+Config visszatöltése TFTP-ről
+Router# copy tftp: running-config
+Address or name of remote host []? 192.168.1.100
+Source filename []? router-backup.cfg
+Destination filename [running-config]?
